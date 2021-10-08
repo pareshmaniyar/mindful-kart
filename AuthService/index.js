@@ -23,7 +23,6 @@ app.post(REGISTER_URL, async (req, res) => {
     // TODO: validation
     const { name, email, password } = req.body;
     const userExists = await User.find({ email });
-    console.log(userExists, email, name, password);
     if(userExists.length != 0) {
         return res.send({ message: 'Tough Luck! Already registered bruh!'});
     }
