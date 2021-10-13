@@ -1,10 +1,13 @@
 const express = require('express');
 const jwt = require('jsonwebtoken');
+const passport = require('passport');
+const cookieSession = require('cookie-session');
+const logger = require('morgan');
 const mongoose = require('mongoose');
 const User = require('./User');
-const app = express();
 const { PORT, mongodbURL, REGISTER_URL, LOGIN_URL } = require('./constants');
-const { JWT_SECRET_KEY } = require('./secretConstants');
+const { JWT_SECRET_KEY, COOKIE_KEY1, COOKIE_KEY2, SESSION_KEY } = require('./secretConstants');
+require('./passport.js');
 
 mongoose.connect(
     mongodbURL,
@@ -17,8 +20,19 @@ mongoose.connect(
     }
 );
 
+const app = express();
+app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
+app.use(logger('dev'));
+app.use(cookieSession({
+    name: 'session',
+    keys: [COOKIE_KEY1, COOKIE_KEY2]
+}));
 
+app.use(passport.initialize());
+app.use(passport.session());
+
+/*
 app.post(REGISTER_URL, async (req, res) => {
     // TODO: validation
     const { name, email, password } = req.body;
@@ -42,9 +56,32 @@ app.post(LOGIN_URL, async (req, res) => {
         else return res.json({ token });
     });
 });
+*/
+app.get('/', (req, res) => res.send("Welcome to the future!"));
+const isLoggedIn = (req, res, next) => {
+    if (req.user) {
+        next();
+    } else {
+        res.sendStatus(401);
+    }
+}
+app.get('/good', isLoggedIn, (req, res) => res.send(`Welcome mr ${req.user.name}!`))
+app.get('/failed', (req, res) => res.send('You Failed to log in!'))
 
-app.get('/', (req, res) => {
-    res.send("Welcome to the future!");
+app.get('/auth/google',
+  passport.authenticate('google', { scope: ['profile', 'email'] }));
+
+app.get('/auth/google/callback', 
+  passport.authenticate('google', { failureRedirect: '/failed' }),
+  function(req, res) {
+    // Successful authentication, redirect home.
+    res.redirect('/good');
+  });
+
+app.get('/logout', (req, res) => {
+    req.session = null;
+    req.logOut();
+    res.redirect('/');
 });
 
 app.listen(PORT, (req, res) => {
