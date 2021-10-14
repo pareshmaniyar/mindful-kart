@@ -5,6 +5,10 @@ const UserSchema = new Schema({
     name: String,
     email: String,
     picture: String,
+    number: {
+        type: String,
+        default: null
+    },
     createdAt: {
         type: Date,
         default: Date.now()

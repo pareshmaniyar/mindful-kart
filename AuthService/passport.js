@@ -9,7 +9,15 @@ passport.serializeUser(function(user, done) {
 
 passport.deserializeUser(function(user, done) {
   // should have redis to check for valid key
-  done(null, user);
+  async function check(user) {
+    const result = await User.findOne({ id: user.id });
+    if(result) {
+      done(null, user);
+    } else {
+      done("Unauthorized", null);
+    }
+  }
+  check(user);
 });
 
 passport.use(new GoogleStrategy({
@@ -22,6 +30,7 @@ passport.use(new GoogleStrategy({
     try {
       const result = await User.findOne({ googleId });
       if(!result) {
+        // how to make sure there are no duplicates
         const createdNewUser = await User.create({ googleId, name, email, picture })
         return cb(null, createdNewUser);
       } else {

@@ -1,12 +1,11 @@
 const express = require('express');
-const jwt = require('jsonwebtoken');
 const passport = require('passport');
 const cookieSession = require('cookie-session');
 const logger = require('morgan');
 const mongoose = require('mongoose');
 const User = require('./User');
-const { PORT, mongodbURL, REGISTER_URL, LOGIN_URL } = require('./constants');
-const { JWT_SECRET_KEY, COOKIE_KEY1, COOKIE_KEY2, SESSION_KEY } = require('./secretConstants');
+const { PORT, mongodbURL } = require('./constants');
+const { COOKIE_KEY1, COOKIE_KEY2 } = require('./secretConstants');
 require('./passport.js');
 
 mongoose.connect(
@@ -31,33 +30,8 @@ app.use(cookieSession({
 
 app.use(passport.initialize());
 app.use(passport.session());
-
-/*
-app.post(REGISTER_URL, async (req, res) => {
-    // TODO: validation
-    const { name, email, password } = req.body;
-    const userExists = await User.find({ email });
-    if(userExists.length != 0) {
-        return res.send({ message: 'Tough Luck! Already registered bruh!'});
-    }
-    const newUser = new User({ name, email, password });
-    newUser.save(); // amazing if this stores in DB
-    res.send('Registered like a pro, login bro');
-});
-
-app.post(LOGIN_URL, async (req, res) => {
-    const { email, password } = req.body;
-    const user = await User.findOne({ email });
-    if(!user || password !== user.password) {
-        return res.json({ message: "One credential to rule them all, sadly doesn't match"});
-    }
-    jwt.sign({ email, name: user.name }, JWT_SECRET_KEY, (err, token) => {
-        if(err) return res.send({ message: "Error signing" });
-        else return res.json({ token });
-    });
-});
-*/
 app.get('/', (req, res) => res.send("Welcome to the future!"));
+
 const isLoggedIn = (req, res, next) => {
     if (req.user) {
         next();
@@ -65,9 +39,25 @@ const isLoggedIn = (req, res, next) => {
         res.sendStatus(401);
     }
 }
+
 app.get('/good', isLoggedIn, (req, res) => {
     res.send(`Welcome Mr ${req.user.name}!`);
 })
+
+app.put('/user-update', isLoggedIn, async (req, res) => {
+    const data = {};
+    for(const key of ['name', 'number']) {
+        if(!(key in req.body) || !req.body[key]) continue;
+        data[key] = req.body[key];
+    }
+    const updatedDocs = await User.findByIdAndUpdate(req.user.id, data, {new: true});
+    res.send({ 
+        id: updatedDocs.id,
+        name: updatedDocs.name,
+        number: updatedDocs.number,
+        email: updatedDocs.email
+    });
+});
 
 app.get('/failed', (req, res) => res.send('You Failed to log in!'))
 
