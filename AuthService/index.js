@@ -65,7 +65,10 @@ const isLoggedIn = (req, res, next) => {
         res.sendStatus(401);
     }
 }
-app.get('/good', isLoggedIn, (req, res) => res.send(`Welcome mr ${req.user.name}!`))
+app.get('/good', isLoggedIn, (req, res) => {
+    res.send(`Welcome Mr ${req.user.name}!`);
+})
+
 app.get('/failed', (req, res) => res.send('You Failed to log in!'))
 
 app.get('/auth/google',

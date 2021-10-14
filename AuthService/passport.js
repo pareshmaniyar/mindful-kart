@@ -1,12 +1,14 @@
 const passport = require('passport');
 var GoogleStrategy = require('passport-google-oauth20').Strategy;
-const { GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET } = require('./secretConstants');
 const User = require('./User.js');
+const { GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET } = require('./secretConstants');
+
 passport.serializeUser(function(user, done) {
-  done(null, user);
+  done(null, { id: user.id, name: user.name });
 });
 
 passport.deserializeUser(function(user, done) {
+  // should have redis to check for valid key
   done(null, user);
 });
 
@@ -15,19 +17,18 @@ passport.use(new GoogleStrategy({
     clientSecret: GOOGLE_CLIENT_SECRET,
     callbackURL: "http://localhost:3000/auth/google/callback"
   },
-  function(accessToken, refreshToken, profile, cb) {
-    const { id: googleId , name, email, picture } = profile._json;
-    console.log(profile._json)
-    User.findOne({ googleId }, (err, result) => {
-      console.log("asdasd", err, result)
-      if(err) {
-        User.create({ googleId, name, email, picture }, (err, result) => {
-          console.log(err, result)
-          return cb(err, result);
-        });
+  async function(_accessToken, _refreshToken, profile, cb) {
+    const { sub: googleId , name, email, picture } = profile._json;
+    try {
+      const result = await User.findOne({ googleId });
+      if(!result) {
+        const createdNewUser = await User.create({ googleId, name, email, picture })
+        return cb(null, createdNewUser);
       } else {
-        return cb(err, result)
+        return cb(null, result)
       }
-    });
+    } catch (err) {
+      return cb(err, result)
+    }
   }
 ));
